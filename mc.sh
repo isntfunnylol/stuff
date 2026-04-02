@@ -25,15 +25,6 @@ echo "- Provide no guarantee of uptime, stability, or compatibility."
 echo ""
 echo "Use this script only if you fully understand what you are doing."
 echo ""
-read -p "Type 'I ACCEPT' to continue: " consent
-
-if [ "$consent" != "I ACCEPT" ]; then
-  echo "[-] Cancelled"
-  exit 1
-fi
-
-echo "[+] Accepted"
-sleep 1
 
 # ===== FAST MIRROR =====
 echo "[+] Setting fast Alpine mirror..."
