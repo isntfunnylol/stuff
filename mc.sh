@@ -8,18 +8,18 @@ echo "=================================================="
 echo ""
 
 # ===== DISCLAIMER =====
-echo "IMPORTANT NOTICE / DISCLAIMER"
+echo "DISCLAIMER"
 echo ""
-echo "This script is provided AS IS without warranty."
+echo "This script is provided AS IS without any warranty."
 echo ""
-echo "By using this script, you accept full responsibility for:"
-echo "- Any system damage, crashes, or data loss"
-echo "- Performance issues or instability"
-echo "- Security and network configuration"
-echo "- Installing and managing your own tunnel"
+echo "You are responsible for:"
+echo "- System damage or data loss"
+echo "- Performance and stability"
+echo "- Security and configuration"
+echo "- Installing your own tunnel"
 echo ""
-echo "This is a community-made tool."
-echo "No guarantees, support, or uptime are provided."
+echo "This is a community-made script."
+echo "No guarantees are provided."
 echo ""
 
 read -p "Press ENTER to continue..."
@@ -27,23 +27,19 @@ read -p "Press ENTER to continue..."
 # ===== ROOT CHECK =====
 echo "[+] Checking permissions..."
 if [ "$(id -u)" -ne 0 ]; then
-  echo "[-] Please run as root"
+  echo "[-] Run as root"
   exit 1
 fi
 
-# ===== SYSTEM INFO =====
-echo "[+] System detected:"
-uname -a
-
 # ===== MIRROR =====
-echo "[+] Setting fast mirror..."
+echo "[+] Setting Alpine mirror..."
 cat > /etc/apk/repositories <<EOF
 http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/main
 http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/community
 EOF
 
 # ===== UPDATE =====
-echo "[+] Updating packages..."
+echo "[+] Updating..."
 apk update
 
 # ===== DEPENDENCIES =====
@@ -51,44 +47,46 @@ echo "[+] Installing dependencies..."
 apk add --no-cache wget curl screen bash
 
 # ===== DIRECTORY =====
-echo "[+] Setting up server directory..."
+echo "[+] Creating server folder..."
 mkdir -p /root/mc
 cd /root/mc || exit
 
-# ===== DOWNLOAD =====
+# ===== DOWNLOAD SERVER =====
 echo "[+] Downloading Bareiron..."
 wget -q -O bareiron https://github.com/p2r3/bareiron/releases/latest/download/bareiron.exe
 chmod +x bareiron
 
-# ===== CONTROL SYSTEM =====
-echo "[+] Creating control system..."
+# ===== CONTROL COMMAND =====
+echo "[+] Setting up control command..."
 
-cat > control.sh << 'EOF'
+cat > /usr/local/bin/control << 'EOF'
 #!/bin/sh
 
 SESSION="mc"
+SERVER_DIR="/root/mc"
 
 start() {
   echo "[+] Starting server..."
 
-  screen -dmS $SESSION bash -c "
+  screen -dmS "$SESSION" sh -c "
+    cd $SERVER_DIR || exit
     while true; do
       nice -n 10 ./bareiron
-      echo '[!] Crash detected, restarting...'
+      echo '[!] Restarting...'
       sleep 2
     done
   "
 
-  echo "[+] Server started."
+  echo "[+] Server started"
 }
 
 stop() {
   echo "[+] Stopping server..."
-  screen -S $SESSION -X quit
+  screen -S "$SESSION" -X quit 2>/dev/null
 }
 
 status() {
-  screen -ls | grep $SESSION && echo "[+] Running" || echo "[-] Not running"
+  screen -ls | grep "$SESSION" >/dev/null && echo "[+] Running" || echo "[-] Not running"
 }
 
 case "$1" in
@@ -96,12 +94,12 @@ case "$1" in
   stop) stop ;;
   status) status ;;
   *)
-    echo "Usage: $0 {start|stop|status}"
+    echo "Usage: control {start|stop|status}"
     ;;
 esac
 EOF
 
-chmod +x control.sh
+chmod +x /usr/local/bin/control
 
 # ===== START SCRIPT =====
 echo "[+] Creating start script..."
@@ -109,18 +107,17 @@ echo "[+] Creating start script..."
 cat > start.sh << 'EOF'
 #!/bin/sh
 
-cd /root/mc || exit
-./control.sh start
+echo "[+] Starting server..."
+control start
 
 echo ""
-echo "============================"
-echo " Server is running"
-echo "============================"
-echo ""
 echo "Commands:"
+echo "  control start"
+echo "  control stop"
+echo "  control status"
+echo ""
+echo "Screen:"
 echo "  screen -r mc"
-echo "  ./control.sh stop"
-echo "  ./control.sh status"
 echo ""
 EOF
 
@@ -137,23 +134,27 @@ echo "Run:"
 echo "./start.sh"
 echo ""
 
-echo "IMPORTANT:"
-echo "- This script does NOT include any tunnel."
-echo "- You MUST install and configure your own tunnel."
-echo "- Examples: Playit, Ngrok, or Port Forwarding."
+echo "CONTROL COMMAND:"
+echo "control start"
+echo "control stop"
+echo "control status"
 echo ""
 
-echo "AFTER SETUP:"
-echo "1. Install tunnel client"
-echo "2. Run tunnel"
-echo "3. Use the tunnel address to connect"
+echo "IMPORTANT:"
+echo "- No tunnel included"
+echo "- You MUST install your own tunnel manually"
+echo ""
+
+echo "TUNNEL EXAMPLES:"
+echo "- Playit"
+echo "- Ngrok"
+echo "- Port forwarding"
 echo ""
 
 echo "NOTES:"
 echo "- Community-made for 5136"
-echo "- Lightweight for low RAM servers"
-echo "- Auto-restarts on crash"
-echo "- Uses screen for background running"
+echo "- Optimized for low RAM servers"
+echo "- Auto restarts on crash"
 echo ""
 
 echo "Done."
