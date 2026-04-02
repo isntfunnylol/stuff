@@ -3,82 +3,133 @@
 # ===== HEADER =====
 clear
 echo "=================================================="
-echo "  Community-made Bareiron Installer for vServer"
+echo "   Community-made Bareiron Installer for 5136"
 echo "=================================================="
 echo ""
 
 # ===== DISCLAIMER =====
 echo "IMPORTANT NOTICE / DISCLAIMER"
 echo ""
-echo "This script is provided 'AS IS' without any warranty."
+echo "This script is provided AS IS without warranty."
 echo ""
-echo "By using this script, you acknowledge and accept that:"
-echo "- You are fully responsible for any damage, data loss, or system issues."
-echo "- This is a community-made tool, not an official product."
-echo "- You must configure your own network tunnel manually."
-echo "- No support or guarantees are provided."
+echo "By using this script, you accept full responsibility for:"
+echo "- Any system damage, crashes, or data loss"
+echo "- Performance issues or instability"
+echo "- Security and network configuration"
+echo "- Installing and managing your own tunnel"
 echo ""
-echo "The developers:"
-echo "- Are NOT responsible for crashes, data loss, or misuse."
-echo "- Do NOT guarantee uptime, stability, or compatibility."
-echo ""
-echo "Use at your own risk."
+echo "This is a community-made tool."
+echo "No guarantees, support, or uptime are provided."
 echo ""
 
-# ===== FAST MIRROR =====
-echo "[+] Setting fast Alpine mirror..."
-echo "http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/main" > /etc/apk/repositories
-echo "http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/community" >> /etc/apk/repositories
+read -p "Press ENTER to continue..."
 
-# ===== OPTIONAL OPTIMIZATION =====
-echo "[+] Optional performance tweaks..."
-read -p "Apply tweaks? (y/n): " opt
-
-if [ "$opt" = "y" ]; then
-  sysctl -w vm.swappiness=10 2>/dev/null
-  sysctl -w fs.file-max=50000 2>/dev/null
-  echo "[+] Tweaks applied"
-else
-  echo "[!] Skipping tweaks"
+# ===== ROOT CHECK =====
+echo "[+] Checking permissions..."
+if [ "$(id -u)" -ne 0 ]; then
+  echo "[-] Please run as root"
+  exit 1
 fi
 
-# ===== INSTALL MINIMAL DEPENDENCIES =====
-echo "[+] Installing minimal dependencies..."
+# ===== SYSTEM INFO =====
+echo "[+] System detected:"
+uname -a
+
+# ===== MIRROR =====
+echo "[+] Setting fast mirror..."
+cat > /etc/apk/repositories <<EOF
+http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/main
+http://mirror1.hs-esslingen.de/pub/Mirrors/alpine/v3.23/community
+EOF
+
+# ===== UPDATE =====
+echo "[+] Updating packages..."
 apk update
-apk add --no-cache wget screen curl
 
-# ===== SERVER SETUP =====
+# ===== DEPENDENCIES =====
+echo "[+] Installing dependencies..."
+apk add --no-cache wget curl screen bash
+
+# ===== DIRECTORY =====
 echo "[+] Setting up server directory..."
-mkdir -p ~/mc
-cd ~/mc || exit
+mkdir -p /root/mc
+cd /root/mc || exit
 
+# ===== DOWNLOAD =====
 echo "[+] Downloading Bareiron..."
 wget -q -O bareiron https://github.com/p2r3/bareiron/releases/latest/download/bareiron.exe
-
 chmod +x bareiron
 
+# ===== CONTROL SYSTEM =====
+echo "[+] Creating control system..."
+
+cat > control.sh << 'EOF'
+#!/bin/sh
+
+SESSION="mc"
+
+start() {
+  echo "[+] Starting server..."
+
+  screen -dmS $SESSION bash -c "
+    while true; do
+      nice -n 10 ./bareiron
+      echo '[!] Crash detected, restarting...'
+      sleep 2
+    done
+  "
+
+  echo "[+] Server started."
+}
+
+stop() {
+  echo "[+] Stopping server..."
+  screen -S $SESSION -X quit
+}
+
+status() {
+  screen -ls | grep $SESSION && echo "[+] Running" || echo "[-] Not running"
+}
+
+case "$1" in
+  start) start ;;
+  stop) stop ;;
+  status) status ;;
+  *)
+    echo "Usage: $0 {start|stop|status}"
+    ;;
+esac
+EOF
+
+chmod +x control.sh
+
 # ===== START SCRIPT =====
+echo "[+] Creating start script..."
+
 cat > start.sh << 'EOF'
 #!/bin/sh
 
-echo "[+] Starting Bareiron (Ultra-Low Mode)"
-
-nice -n 10 screen -dmS mc ./bareiron
+cd /root/mc || exit
+./control.sh start
 
 echo ""
-echo "[+] Server running"
-echo "Use:"
+echo "============================"
+echo " Server is running"
+echo "============================"
+echo ""
+echo "Commands:"
 echo "  screen -r mc"
-echo "  screen -ls"
+echo "  ./control.sh stop"
+echo "  ./control.sh status"
 echo ""
 EOF
 
 chmod +x start.sh
 
-# ===== FINAL MESSAGE =====
+# ===== FINAL =====
 echo ""
 echo "=================================================="
-echo " INSTALL COMPLETE (ULTRA LOW RAM)"
+echo " INSTALL COMPLETE"
 echo "=================================================="
 echo ""
 
@@ -88,25 +139,21 @@ echo ""
 
 echo "IMPORTANT:"
 echo "- This script does NOT include any tunnel."
-echo "- You MUST install and configure your own tunnel manually."
-echo "- Examples: Playit, Ngrok, or port forwarding."
+echo "- You MUST install and configure your own tunnel."
+echo "- Examples: Playit, Ngrok, or Port Forwarding."
 echo ""
 
-echo "NOTE:"
-echo "- This is not fully updated."
-echo "- Some features may require manual fixes."
+echo "AFTER SETUP:"
+echo "1. Install tunnel client"
+echo "2. Run tunnel"
+echo "3. Use the tunnel address to connect"
 echo ""
 
-echo "===== TUNNEL SETUP (MANUAL) ====="
-echo ""
-echo "1. Install your tunnel provider (example: Playit)"
-echo "2. Start the tunnel client on your server"
-echo "3. Copy the tunnel address provided"
-echo "4. Use it to connect to your server"
+echo "NOTES:"
+echo "- Community-made for 5136"
+echo "- Lightweight for low RAM servers"
+echo "- Auto-restarts on crash"
+echo "- Uses screen for background running"
 echo ""
 
-echo "Ultra-low tips:"
-echo "- Use low view-distance (4 or lower)"
-echo "- Avoid heavy plugins"
-echo "- Keep player count low"
-echo "- Run only essential services"
+echo "Done."
